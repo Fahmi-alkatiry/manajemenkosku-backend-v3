@@ -14,12 +14,17 @@ model User {
   password  String
   no_hp     String?
   role      Role      @default(PENYEWA)
+  
+  tanggal_mulai_sewa DateTime?
+  tanggal_akhir_sewa DateTime?
+  alamat             String? // <-- TAMBAHKAN BARIS INI
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
   // Relasi
   kamar     Kamar?    @relation(fields: [kamarId], references: [id])
-  kamarId   Int?      @unique // <--- BERUBAH: Tambahkan @unique di sini
+  kamarId   Int?      @unique 
   pembayaran Pembayaran[]
 }
 

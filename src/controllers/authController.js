@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 // REGISTER
 export const register = async (req, res) => {
   // Menggunakan field dari skema Anda: nama, email, password, no_hp, role
-  const { nama, email, password, no_hp, role } = req.body;
+  const { nama, email, password, no_hp, role, } = req.body;
 
   try {
     // 1. Cek apakah email sudah ada
@@ -97,13 +97,14 @@ export const getMe = async (req, res) => {
   try {
     // Kita cari ulang untuk data yang paling update (opsional, tapi bagus)
     const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
+     where: { id: req.user.id },
       select: {
         id: true,
         nama: true,
         email: true,
         role: true,
         no_hp: true,
+        alamat: true, // <-- TAMBAHKAN INI
       },
     });
 
@@ -171,23 +172,24 @@ export const getAllUser = async (req, res) => {
 };
 
 export const updateProfileDetails = async (req, res) => {
-  const { nama, no_hp } = req.body;
+  const { nama, no_hp, alamat } = req.body;
   const userId = req.user.id; // Diambil dari middleware 'protect'
 
   try {
-    const updatedUser = await prisma.user.update({
+   const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
         nama,
         no_hp,
+        alamat, // <-- TAMBAHKAN INI
       },
-      // Pilih data yang ingin dikirim kembali (tanpa password)
-      select: {
+      select: { // Pastikan 'alamat' ada di select
         id: true,
         nama: true,
         email: true,
         role: true,
         no_hp: true,
+        alamat: true, // <-- TAMBAHKAN INI
       },
     });
     res.status(200).json(updatedUser);

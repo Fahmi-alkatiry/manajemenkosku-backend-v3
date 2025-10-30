@@ -69,33 +69,63 @@ export const getTenantDashboard = async (req, res) => {
   const penyewaId = req.user.id;
 
   try {
-    // 1. Dapatkan info kamar penyewa
+    // 1. Ambil data user (termasuk tanggal sewa baru)
+    const user = await prisma.user.findUnique({
+      where: { id: penyewaId },
+    });
+    // ... (cek user) ...
+
+    // 2. Ambil info kamar
     const myKamar = await prisma.kamar.findFirst({
       where: { penyewa: { id: penyewaId } },
     });
 
-    // 2. Dapatkan riwayat pembayaran (5 terakhir)
+    // 3. Ambil riwayat pembayaran
     const myPayments = await prisma.pembayaran.findMany({
       where: { penyewaId: penyewaId },
       take: 5,
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
+      // (Anda mungkin perlu 'include' penyewa lagi di sini jika model Payment butuh)
     });
 
-    // 3. Cek pembayaran 'Pending'
+    // 4. Cek pembayaran 'Pending'
     const pendingPayment = await prisma.pembayaran.findFirst({
-      where: {
-        penyewaId: penyewaId,
-        status: 'Pending',
-      },
+      where: { penyewaId: penyewaId, status: 'Pending' },
     });
+
+    // --- 5. LOGIKA BARU: HITUNG JATUH TEMPO ---
+    let jatuhTempo = null;
+    if (user.tanggal_mulai_sewa) {
+      const tglMulai = new Date(user.tanggal_mulai_sewa);
+      const tglSekarang = new Date();
+      
+      const hariJatuhTempo = tglMulai.getDate(); // Tanggal bayar (misal: tgl 5)
+      let bulanBerikutnya = tglSekarang.getMonth();
+      let tahunBerikutnya = tglSekarang.getFullYear();
+
+      // Jika hari ini sudah lewat tgl jatuh tempo, tagihan pindah ke bulan depan
+      if (tglSekarang.getDate() > hariJatuhTempo) {
+        bulanBerikutnya++;
+      }
+      
+      if (bulanBerikutnya > 11) { // Jika bulan > Desember (index 11)
+        bulanBerikutnya = 0; // Januari (index 0)
+        tahunBerikutnya++;
+      }
+      
+      jatuhTempo = new Date(tahunBerikutnya, bulanBerikutnya, hariJatuhTempo);
+    }
+    // -------------------------------------------
 
     res.status(200).json({
       roomDetails: myKamar,
       paymentHistory: myPayments,
       hasPendingPayment: pendingPayment ? true : false,
       pendingPaymentDetails: pendingPayment,
+      // Kirim data baru ke Flutter
+      jatuhTempo: jatuhTempo, // Kirim sebagai ISO string
+      tanggalMulaiSewa: user.tanggal_mulai_sewa,
+      tanggalAkhirSewa: user.tanggal_akhir_sewa,
     });
 
   } catch (error) {

@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 // @desc    Membuat penyewa baru (oleh Admin)
 // @route   POST /api/tenants
 export const createTenant = async (req, res) => {
-  const { nama, email, password, no_hp, kamarId } = req.body;
+  const { nama, email, password, no_hp, kamarId, tanggal_mulai_sewa, tanggal_akhir_sewa, alamat } = req.body;
 
   try {
     // 1. Cek apakah email sudah ada
@@ -18,14 +18,17 @@ export const createTenant = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // 3. Buat user baru dengan role PENYEWA
-    const newTenant = await prisma.user.create({
+   const newTenant = await prisma.user.create({
       data: {
         nama,
         email,
         password: hashedPassword,
         no_hp,
         role: 'PENYEWA',
-        kamarId: kamarId ? parseInt(kamarId) : null, // Langsung assign kamar jika ada
+        kamarId: kamarId ? parseInt(kamarId) : null,
+        tanggal_mulai_sewa: tanggal_mulai_sewa ? new Date(tanggal_mulai_sewa) : null,
+        tanggal_akhir_sewa: tanggal_akhir_sewa ? new Date(tanggal_akhir_sewa) : null,
+        alamat: alamat, // <-- TAMBAHKAN INI
       },
     });
 
