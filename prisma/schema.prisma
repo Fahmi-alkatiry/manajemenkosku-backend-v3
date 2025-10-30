@@ -1,0 +1,70 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  nama      String
+  email     String    @unique
+  password  String
+  no_hp     String?
+  role      Role      @default(PENYEWA)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relasi
+  kamar     Kamar?    @relation(fields: [kamarId], references: [id])
+  kamarId   Int?      @unique // <--- BERUBAH: Tambahkan @unique di sini
+  pembayaran Pembayaran[]
+}
+
+model Kamar {
+  id           Int          @id @default(autoincrement())
+  nomor_kamar  String       @unique
+  tipe         String
+  harga        Float
+  deskripsi    String?
+  status       StatusKamar  @default(Tersedia)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relasi
+  penyewa      User? // <--- BERUBAH: Hapus tanda []
+}
+
+model Pembayaran {
+  id               Int         @id @default(autoincrement())
+  bulan            String
+  tahun            Int
+  jumlah           Float
+  status           StatusBayar @default(Pending)
+  bukti_pembayaran String?
+  tanggal_bayar    DateTime?
+  createdAt        DateTime    @default(now())
+
+  // Relasi
+  penyewaId        Int
+  penyewa          User        @relation(fields: [penyewaId], references: [id])
+}
+
+enum Role {
+  ADMIN
+  PENYEWA
+}
+
+enum StatusKamar {
+  Tersedia
+  Ditempati
+  Diperbaiki
+}
+
+enum StatusBayar {
+  Pending
+  Lunas
+  Ditolak
+}
