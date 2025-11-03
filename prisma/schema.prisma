@@ -7,55 +7,112 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// ========= MODEL INTI =========
+
 model User {
-  id        Int       @id @default(autoincrement())
-  nama      String
-  email     String    @unique
-  password  String
-  no_hp     String?
-  role      Role      @default(PENYEWA)
-  
-  tanggal_mulai_sewa DateTime?
-  tanggal_akhir_sewa DateTime?
-  alamat             String? // <-- TAMBAHKAN BARIS INI
+  id       Int    @id @default(autoincrement())
+  nama     String
+  email    String @unique
+  password String
+  no_hp    String?
+  role     Role   @default(PENYEWA)
+  alamat   String?
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  // == Info Identitas (KTP) ==
+  nik       String?  @unique // NIK, bisa null, tapi jika ada harus unik
+  foto_ktp  String?           // URL/path ke file gambar KTP
 
-  // Relasi
-  kamar     Kamar?    @relation(fields: [kamarId], references: [id])
-  kamarId   Int?      @unique 
-  pembayaran Pembayaran[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relasi:
+  // 1. Properti yang DIMILIKI oleh user ini (jika dia ADMIN)
+  propertiDimiliki Properti[] @relation("PemilikProperti")
+  // 2. Daftar kontrak sewa yang PERNAH/SEDANG diambil oleh user ini (jika dia PENYEWA)
+  kontrak          Kontrak[]
+}
+
+model Properti {
+  id            Int      @id @default(autoincrement())
+  nama_properti String // Misal: "Kos Mawar" atau "Kontrakan Berkah"
+  alamat        String
+  deskripsi     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relasi:
+  // 1. Siapa pemilik properti ini?
+  pemilikId Int
+  pemilik   User   @relation("PemilikProperti", fields: [pemilikId], references: [id])
+  // 2. Kamar apa saja yang ada di properti ini?
+  kamar     Kamar[]
 }
 
 model Kamar {
-  id           Int          @id @default(autoincrement())
-  nomor_kamar  String       @unique
-  tipe         String
-  harga        Float
-  deskripsi    String?
-  status       StatusKamar  @default(Tersedia)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id          Int         @id @default(autoincrement())
+  nomor_kamar String // No. 1A, 2B, dll.
+  tipe        String // Misal: "Kamar Mandi Dalam"
+  harga       Float  // Ini adalah harga default/patokan/iklan
+  deskripsi   String?
+  status      StatusKamar @default(Tersedia)
 
-  // Relasi
-  penyewa      User? // <--- BERUBAH: Hapus tanda []
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relasi:
+  // 1. Kamar ini milik properti yang mana?
+  propertiId Int
+  properti   Properti @relation(fields: [propertiId], references: [id])
+  // 2. Daftar riwayat kontrak/penyewa di kamar ini
+  kontrak    Kontrak[]
+}
+
+// ========= MODEL TRANSAKSI (PENTING) =========
+
+model Kontrak {
+  id                 Int            @id @default(autoincrement())
+  tanggal_mulai_sewa DateTime
+  tanggal_akhir_sewa DateTime
+  status_kontrak     StatusKontrak  @default(AKTIF)
+
+  // == Harga Final Sesuai Solusi 1 ==
+  // Harga final yang disepakati (bisa naik/turun karena nego/diskon/2 orang)
+  harga_sewa_disepakati Float
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relasi:
+  // 1. Siapa penyewanya?
+  penyewaId Int
+  penyewa   User @relation(fields: [penyewaId], references: [id])
+  // 2. Kamar apa yang disewa?
+  kamarId Int
+  kamar   Kamar @relation(fields: [kamarId], references: [id])
+  // 3. Pembayaran apa saja yang terkait dengan kontrak ini?
+  pembayaran Pembayaran[]
 }
 
 model Pembayaran {
-  id               Int         @id @default(autoincrement())
-  bulan            String
-  tahun            Int
-  jumlah           Float
-  status           StatusBayar @default(Pending)
-  bukti_pembayaran String?
-  tanggal_bayar    DateTime?
-  createdAt        DateTime    @default(now())
+  id                Int         @id @default(autoincrement())
+  bulan             String // Misal: "Januari", "Februari"
+  tahun             Int
+  jumlah            Float       // Ini adalah jumlah yang DIBAYARKAN
+  status            StatusBayar @default(Pending)
+  bukti_pembayaran  String?     // URL/path ke file gambar bukti bayar
+  tanggal_bayar     DateTime?
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 
-  // Relasi
-  penyewaId        Int
-  penyewa          User        @relation(fields: [penyewaId], references: [id])
+  // Relasi:
+  // Pembayaran ini untuk kontrak yang mana?
+  kontrakId Int
+  kontrak   Kontrak @relation(fields: [kontrakId], references: [id])
 }
+
+
+// ========= ENUMS =========
 
 enum Role {
   ADMIN
@@ -72,4 +129,10 @@ enum StatusBayar {
   Pending
   Lunas
   Ditolak
+}
+
+enum StatusKontrak {
+  AKTIF    // Sedang berlangsung
+  BERAKHIR // Sudah selesai
+  BATAL    // Dibatalkan
 }
