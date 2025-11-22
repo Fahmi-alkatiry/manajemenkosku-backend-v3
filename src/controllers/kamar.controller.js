@@ -32,20 +32,47 @@ export const createKamar = async (req, res) => {
   }
 };
 
+export const getAllKamars = async (req, res) => {
+  try {
+    const kamars = await prisma.kamar.findMany({
+      orderBy: { nomor_kamar: 'asc' },
+      include: {
+        // Sertakan nama properti agar jelas kamar ini milik kosan mana
+        properti: {
+          select: { nama_properti: true }
+        },
+        // Sertakan info penyewa aktif jika ada
+        kontrak: {
+          where: { status_kontrak: 'AKTIF' },
+          take: 1,
+          include: {
+            penyewa: { select: { nama: true } }
+          }
+        }
+      }
+    });
+    res.status(200).json(kamars);
+  } catch (error) {
+    res.status(500).json({ message: "Gagal mengambil data kamar", error: error.message });
+  }
+};
+
 // 2. Melihat semua kamar di satu properti
 export const getKamarByProperti = async (req, res) => {
   try {
-    const { propertiId } = req.params; // Ambil dari parameter URL
+    const { propertiId } = req.params;
 
     const kamar = await prisma.kamar.findMany({
       where: {
         propertiId: parseInt(propertiId),
       },
       include: {
-        // Kita bisa sertakan info properti jika perlu
-        properti: {
-          select: {
-            nama_properti: true,
+        // INCLUDE KONTRAK YANG AKTIF SAJA
+        kontrak: {
+          where: { status_kontrak: 'AKTIF' },
+          take: 1, // Ambil 1 saja (seharusnya cuma ada 1 yg aktif)
+          include: {
+            penyewa: { select: { nama: true } } // Sertakan nama penyewa
           }
         }
       }
@@ -56,6 +83,8 @@ export const getKamarByProperti = async (req, res) => {
     res.status(500).json({ message: "Gagal mengambil data kamar", error: error.message });
   }
 };
+
+
 
 // 3. Mengupdate data kamar
 export const updateKamar = async (req, res) => {
@@ -98,8 +127,13 @@ export const deleteKamar = async (req, res) => {
     });
 
     res.status(200).json({ message: "Kamar berhasil dihapus" });
+    console.log("Kamar berhasil dihapus");
   } catch (error) {
     // Jika error karena ada relasi (misal: ada kontrak), akan gagal
     res.status(500).json({ message: "Gagal menghapus kamar", error: error.message });
+    console.error("Gagal menghapus kamar:", error.message);
   }
+
 };
+
+

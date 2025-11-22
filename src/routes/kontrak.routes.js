@@ -5,7 +5,8 @@ import {
   createKontrak,
   updateKontrakStatus,
   getKontrakByProperti,
-  getMyKontrak
+  getMyKontrak,
+  getAllKontrak
 } from '../controllers/kontrak.controller.js';
 import { verifyToken, isAdmin } from '../middleware/auth.middleware.js';
 
@@ -14,6 +15,12 @@ const router = Router();
 // ===================================
 //  RUTE KHUSUS ADMIN
 // ===================================
+
+router.get(
+  '/',
+  [verifyToken, isAdmin],
+  getAllKontrak // <-- 2. TAMBAHKAN RUTE BARU
+);
 
 // POST /api/kontrak (Membuat kontrak baru)
 router.post(

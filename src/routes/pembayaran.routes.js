@@ -5,7 +5,8 @@ import {
   createPembayaran,
   konfirmasiPembayaran,
   getPembayaranByKontrak,
-  getMyPembayaran
+  getMyPembayaran,
+  getAllPembayaran
 } from '../controllers/pembayaran.controller.js';
 import { verifyToken, isAdmin } from '../middleware/auth.middleware.js';
 
@@ -14,6 +15,14 @@ const router = Router();
 // ===================================
 //  RUTE KHUSUS ADMIN
 // ===================================
+
+
+// GET /api/pembayaran (BARU: Ambil semua pembayaran milik admin)
+router.get(
+  '/',
+  [verifyToken, isAdmin],
+  getAllPembayaran // <-- 2. TAMBAHKAN RUTE BARU
+);
 
 // POST /api/pembayaran (Membuat tagihan baru)
 router.post(

@@ -6,6 +6,7 @@ import kontrakRoutes from './kontrak.routes.js';
 import pembayaranRoutes from './pembayaran.routes.js';
 import userRoutes from './user.routes.js';
 import uploadRoutes from './upload.routes.js';
+import dashboardRoutes from './dashboard.routes.js'; // <-- 1. IMPORT BARU
 
 const router = Router();
 
@@ -30,6 +31,8 @@ router.use('/user', userRoutes);
 // Gunakan /upload untuk semua rute di upload.routes.js
 router.use('/upload', uploadRoutes);
 
+// Gunakan /dashboard untuk semua rute di dashboard.routes.js
+router.use('/dashboard', dashboardRoutes);
 
 
 

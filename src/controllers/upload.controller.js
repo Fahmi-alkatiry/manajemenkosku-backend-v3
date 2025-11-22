@@ -32,6 +32,31 @@ export const uploadFotoKtp = async (req, res) => {
   }
 };
 
+
+export const uploadFotoKtpByAdmin = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "Tidak ada file yang di-upload" });
+    }
+
+    const { userId } = req.params; // Ambil ID user dari URL
+    const filePath = getPublicUrl(req.file.path);
+
+    // Update path di database user target
+    await prisma.user.update({
+      where: { id: parseInt(userId) },
+      data: { foto_ktp: filePath }
+    });
+
+    res.status(200).json({ message: "Foto KTP user berhasil di-upload Admin", path: filePath });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+
 // 2. Upload Bukti Pembayaran (untuk ID pembayaran spesifik)
 export const uploadBuktiPembayaran = async (req, res) => {
   try {

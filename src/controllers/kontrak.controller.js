@@ -156,3 +156,53 @@ export const getMyKontrak = async (req, res) => {
     res.status(500).json({ message: "Gagal mengambil data kontrak", error: error.message });
   }
 };
+export const getAllKontrak = async (req, res) => {
+  try {
+    const adminId = req.user.userId;
+    const { status } = req.query;
+
+    const whereClause = {
+      status_kontrak: status ? status : undefined,
+      kamar: {
+        properti: {
+          pemilikId: adminId,
+        },
+      },
+    };
+
+    // ===================================
+    // ==       PERBAIKAN DI SINI       ==
+    // ===================================
+
+    // Kita ganti 'include' menjadi 'select' agar bisa
+    // menyertakan field dari 'Kontrak' ITU SENDIRI.
+    const kontrak = await prisma.kontrak.findMany({
+      where: whereClause,
+      select: {
+        // Data Kontrak
+        id: true,
+        tanggal_mulai_sewa: true, // <-- INI YANG HILANG
+        tanggal_akhir_sewa: true, // <-- INI YANG HILANG
+
+        // Data Relasi
+        penyewa: {
+          select: { nama: true }
+        },
+        kamar: {
+          select: { 
+            nomor_kamar: true,
+            properti: {
+              select: { nama_properti: true }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    // ===================================
+
+    res.status(200).json(kontrak);
+  } catch (error) {
+    res.status(500).json({ message: "Gagal mengambil data kontrak", error: error.message });
+  }
+};

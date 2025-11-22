@@ -1,3 +1,4 @@
+// backend/src/controllers/auth.controller.js
 import prisma from '../lib/prisma.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -48,8 +49,10 @@ export const login = async (req, res) => {
       token,
       user: { id: user.id, nama: user.nama, email: user.email, role: user.role },
     });
+    console.log(user)
   } catch (error) {
     res.status(500).json({ error: error.message });
+    console.log(error)
   }
 };
 

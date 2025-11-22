@@ -1,8 +1,8 @@
 // src/routes/upload.routes.js
 import { Router } from 'express';
-import { uploadFotoKtp, uploadBuktiPembayaran } from '../controllers/upload.controller.js';
+import { uploadFotoKtp, uploadBuktiPembayaran, uploadFotoKtpByAdmin } from '../controllers/upload.controller.js';
 import { uploadKtp, uploadBukti } from '../middleware/upload.middleware.js'; // Middleware Multer
-import { verifyToken } from '../middleware/auth.middleware.js'; // Middleware Auth
+import { isAdmin, verifyToken } from '../middleware/auth.middleware.js'; // Middleware Auth
 
 const router = Router();
 
@@ -12,6 +12,13 @@ router.post(
   '/ktp',
   [verifyToken, uploadKtp], // Gunakan middleware uploadKtp
   uploadFotoKtp
+);
+
+// POST /api/upload/ktp/:userId (BARU: Khusus Admin untuk user lain)
+router.post(
+  '/ktp/:userId',
+  [verifyToken, isAdmin, uploadKtp], // Gunakan middleware yang sama (uploadKtp)
+  uploadFotoKtpByAdmin
 );
 
 // POST /api/upload/bukti/123 (123 = ID Pembayaran)

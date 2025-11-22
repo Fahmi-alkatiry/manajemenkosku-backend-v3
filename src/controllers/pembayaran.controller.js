@@ -7,12 +7,11 @@ export const createPembayaran = async (req, res) => {
   try {
     const { kontrakId, bulan, tahun } = req.body;
 
-    // 1. Validasi input
     if (!kontrakId || !bulan || !tahun) {
       return res.status(400).json({ message: "Kontrak, bulan, dan tahun wajib diisi" });
     }
 
-    // 2. Ambil data kontrak untuk mendapatkan harga
+    // 1. Ambil data kontrak untuk mendapatkan harga DAN tanggal mulai sewa
     const kontrak = await prisma.kontrak.findUnique({
       where: { id: parseInt(kontrakId) }
     });
@@ -20,29 +19,41 @@ export const createPembayaran = async (req, res) => {
       return res.status(404).json({ message: "Kontrak tidak ditemukan" });
     }
 
+    // 2. Hitung Tanggal Jatuh Tempo
+    // Ambil tanggal 'mulai' dari kontrak (misal: 5)
+    const tanggalTagihan = kontrak.tanggal_mulai_sewa.getDate();
+    
+    // Konversi nama bulan (String) ke angka (0-11)
+    const daftarBulan = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    const bulanAngka = daftarBulan.indexOf(bulan); // Misal: 'November' -> 10
+
+    // Buat tanggal jatuh tempo (misal: 5 November 2025)
+    const jatuhTempo = new Date(tahun, bulanAngka, tanggalTagihan);
+
     // 3. Buat tagihan baru
     const newPembayaran = await prisma.pembayaran.create({
       data: {
         kontrakId: parseInt(kontrakId),
         bulan,
         tahun: parseInt(tahun),
-        // Ambil jumlah tagihan dari harga yang disepakati di kontrak
         jumlah: kontrak.harga_sewa_disepakati,
-        status: 'Pending' // Status default saat tagihan dibuat
+        status: 'Pending',
+        tanggal_jatuh_tempo: jatuhTempo // <-- SIMPAN TANGGAL JATUH TEMPO
       }
     });
 
     res.status(201).json(newPembayaran);
 
   } catch (error) {
-    // Handle jika tagihan duplikat (misal: bulan & tahun sama untuk 1 kontrak)
     if (error.code === 'P2002') {
       return res.status(400).json({ message: "Tagihan untuk bulan dan tahun tersebut sudah ada" });
     }
     res.status(500).json({ message: "Gagal membuat tagihan", error: error.message });
   }
 };
-
 // 2. Konfirmasi Pembayaran (Oleh Admin)
 export const konfirmasiPembayaran = async (req, res) => {
   try {
@@ -126,5 +137,44 @@ export const getMyPembayaran = async (req, res) => {
     res.status(200).json(pembayaran);
   } catch (error) {
     res.status(500).json({ message: "Gagal mengambil tagihan", error: error.message });
+  }
+};
+
+
+export const getAllPembayaran = async (req, res) => {
+  try {
+    const adminId = req.user.userId; // ID Admin dari token
+    const { status } = req.query; // Ambil filter ?status=Pending
+
+    // Buat filter 'where'
+    const whereClause = {
+      // 1. Filter status (misal: 'Pending')
+      status: status ? status : undefined,
+      // 2. Filter utama: hanya ambil pembayaran dari properti milik admin
+      kontrak: {
+        kamar: {
+          properti: {
+            pemilikId: adminId,
+          },
+        },
+      },
+    };
+
+    const pembayaran = await prisma.pembayaran.findMany({
+      where: whereClause,
+      include: { // Untuk UI di Flutter
+        kontrak: {
+          include: {
+            penyewa: { select: { nama: true } },
+            kamar: { select: { nomor_kamar: true } }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.status(200).json(pembayaran);
+  } catch (error) {
+    res.status(500).json({ message: "Gagal mengambil data pembayaran", error: error.message });
   }
 };

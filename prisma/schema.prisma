@@ -1,11 +1,9 @@
-datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
-}
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
+
 
 // ========= MODEL INTI =========
 
@@ -104,6 +102,7 @@ model Pembayaran {
   
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
+  tanggal_jatuh_tempo DateTime?
 
   // Relasi:
   // Pembayaran ini untuk kontrak yang mana?

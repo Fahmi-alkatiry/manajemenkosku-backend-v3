@@ -6,10 +6,16 @@ import {
   getKamarByProperti,
   updateKamar,
   deleteKamar,
+  getAllKamars,
 } from "../controllers/kamar.controller.js";
 import { verifyToken, isAdmin } from "../middleware/auth.middleware.js";
 
 const router = Router();
+
+
+
+router.get("/", [verifyToken], getAllKamars); 
+
 
 // ===================================
 //  RUTE YANG DIPROTEKSI SEMUA USER
