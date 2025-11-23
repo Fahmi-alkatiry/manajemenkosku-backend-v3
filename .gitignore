@@ -1,5 +1,8 @@
 node_modules
 # Keep environment variables out of version control
 .env
-uploads
+node_modules.zip
+*.zip
+uploads/
+public/uploads/
 /src/generated/prisma
