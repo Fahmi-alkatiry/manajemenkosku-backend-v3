@@ -144,13 +144,23 @@ export const getMyPembayaran = async (req, res) => {
 export const getAllPembayaran = async (req, res) => {
   try {
     const adminId = req.user.userId; // ID Admin dari token
-    const { status } = req.query; // Ambil filter ?status=Pending
+    
+    // Ambil parameter dari query URL
+    // Contoh: /api/pembayaran?bulan=Januari&tahun=2025&status=Lunas
+    const { status, bulan, tahun } = req.query; 
 
-    // Buat filter 'where'
+    // Buat filter 'where' yang dinamis
     const whereClause = {
-      // 1. Filter status (misal: 'Pending')
+      // 1. Filter status (jika ada)
       status: status ? status : undefined,
-      // 2. Filter utama: hanya ambil pembayaran dari properti milik admin
+      
+      // 2. Filter Bulan (jika ada)
+      bulan: bulan ? bulan : undefined,
+      
+      // 3. Filter Tahun (jika ada, pastikan jadi integer)
+      tahun: tahun ? parseInt(tahun) : undefined,
+
+      // 4. Filter utama: hanya ambil pembayaran dari properti milik admin
       kontrak: {
         kamar: {
           properti: {
@@ -162,16 +172,25 @@ export const getAllPembayaran = async (req, res) => {
 
     const pembayaran = await prisma.pembayaran.findMany({
       where: whereClause,
-      include: { // Untuk UI di Flutter
+      include: { 
         kontrak: {
           include: {
             penyewa: { select: { nama: true } },
-            kamar: { select: { nomor_kamar: true } }
+            kamar: { 
+              select: { 
+                nomor_kamar: true,
+                properti: { select: { nama_properti: true } }
+              } 
+            }
           }
         }
       },
       orderBy: { createdAt: 'desc' }
     });
+
+    // --- TAMBAHAN: Hitung Total Pemasukan untuk Laporan ---
+    // Jika user meminta filter bulan & tahun, kita sekalian hitung totalnya di sini (opsional)
+    // Tapi untuk sekarang kita biarkan Flutter yang menghitung dari list agar lebih fleksibel.
 
     res.status(200).json(pembayaran);
   } catch (error) {

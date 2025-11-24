@@ -5,7 +5,10 @@ import {
   getMyProfile,
   updateMyProfile,
   getAllUsers,
-  getUserById
+  getUserById,
+  createTenant,
+  updateTenantByAdmin,
+  deleteTenant
 } from '../controllers/user.controller.js';
 import { verifyToken, isAdmin } from '../middleware/auth.middleware.js';
 
@@ -46,5 +49,10 @@ router.get(
   [verifyToken, isAdmin],
   getUserById
 );
+
+router.post('/', [verifyToken, isAdmin], createTenant);
+router.put('/:id', [verifyToken, isAdmin], updateTenantByAdmin);
+router.delete('/:id', [verifyToken, isAdmin], deleteTenant);
+
 
 export default router;

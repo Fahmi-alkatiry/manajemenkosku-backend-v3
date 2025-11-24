@@ -6,7 +6,8 @@ import {
   updateKontrakStatus,
   getKontrakByProperti,
   getMyKontrak,
-  getAllKontrak
+  getAllKontrak,
+  getActiveContractByRoom
 } from '../controllers/kontrak.controller.js';
 import { verifyToken, isAdmin } from '../middleware/auth.middleware.js';
 
@@ -53,5 +54,13 @@ router.get(
   [verifyToken], // Cukup verifyToken, tidak perlu isAdmin
   getMyKontrak
 );
+
+// GET /api/kontrak/active/kamar/1 (Melihat kontrak aktif di kamar tertentu)
+router.get(
+  '/active/kamar/:kamarId',
+  [verifyToken, isAdmin],
+  getActiveContractByRoom
+);
+
 
 export default router;

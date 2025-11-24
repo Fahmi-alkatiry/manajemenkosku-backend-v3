@@ -156,53 +156,88 @@ export const getMyKontrak = async (req, res) => {
     res.status(500).json({ message: "Gagal mengambil data kontrak", error: error.message });
   }
 };
+
+// 3. (UPDATE) Melihat semua kontrak (dengan filter status & relasi pembayaran)
 export const getAllKontrak = async (req, res) => {
   try {
-    const adminId = req.user.userId;
-    const { status } = req.query;
+    // const adminId = req.user.userId;
+    const { status } = req.query; // Tangkap query ?status=AKTIF
 
+    // Filter: Hanya kontrak milik admin yang login, dan status sesuai request
     const whereClause = {
-      status_kontrak: status ? status : undefined,
-      kamar: {
-        properti: {
-          pemilikId: adminId,
-        },
-      },
+      status_kontrak: status ? status : undefined
     };
 
-    // ===================================
-    // ==       PERBAIKAN DI SINI       ==
-    // ===================================
-
-    // Kita ganti 'include' menjadi 'select' agar bisa
-    // menyertakan field dari 'Kontrak' ITU SENDIRI.
     const kontrak = await prisma.kontrak.findMany({
       where: whereClause,
       select: {
-        // Data Kontrak
         id: true,
-        tanggal_mulai_sewa: true, // <-- INI YANG HILANG
-        tanggal_akhir_sewa: true, // <-- INI YANG HILANG
+        tanggal_mulai_sewa: true,
+        tanggal_akhir_sewa: true,
+        status_kontrak: true, // Penting untuk debugging status
 
-        // Data Relasi
+        // Data Penyewa
         penyewa: {
           select: { nama: true }
         },
+        
+        // Data Kamar & Properti
         kamar: {
-          select: { 
+          select: {
             nomor_kamar: true,
             properti: {
               select: { nama_properti: true }
             }
           }
+        },
+
+        // Data Pembayaran (YANG BARU DITAMBAHKAN)
+        pembayaran: {
+          select: {
+            bulan: true,
+            tahun: true,
+            status: true // Opsional: biar kita tau status bayarnya
+          }
         }
       },
       orderBy: { createdAt: 'desc' }
     });
-    // ===================================
 
     res.status(200).json(kontrak);
   } catch (error) {
+    console.error("Error getAllKontrak:", error); // Agar muncul di terminal backend
     res.status(500).json({ message: "Gagal mengambil data kontrak", error: error.message });
+  }
+};
+
+export const getActiveContractByRoom = async (req, res) => {
+  try {
+    const { kamarId } = req.params;
+
+    const kontrak = await prisma.kontrak.findFirst({
+      where: {
+        kamarId: parseInt(kamarId),
+        status_kontrak: 'AKTIF' // Hanya cari yang aktif
+      },
+      include: {
+        penyewa: {
+          select: {
+            nama: true,
+            no_hp: true,
+            email: true,
+            foto_ktp: true
+          }
+        },
+        kamar: true
+      }
+    });
+
+    if (!kontrak) {
+      return res.status(404).json({ message: "Tidak ada kontrak aktif di kamar ini" });
+    }
+
+    res.status(200).json(kontrak);
+  } catch (error) {
+    res.status(500).json({ message: "Gagal mengambil kontrak aktif", error: error.message });
   }
 };

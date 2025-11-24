@@ -1,9 +1,10 @@
+// src/controllers/properti.controller.js
 import prisma from '../lib/prisma.js';
 
 // 1. CREATE (Membuat Properti)
 export const createProperti = async (req, res) => {
   // req.user diisi oleh middleware 'protect', berisi data user yang sedang login
-  const adminId = req.user.id; 
+  const adminId = req.user.userId; 
   const { nama_properti, alamat, deskripsi } = req.body;
 
   if (!nama_properti || !alamat) {
@@ -29,20 +30,40 @@ export const createProperti = async (req, res) => {
 // 2. READ (Ambil Semua Properti)
 export const getAllProperti = async (req, res) => {
   try {
-    const properti = await prisma.properti.findMany({
+    const propertiList = await prisma.properti.findMany({
       include: {
-        pemilik: { // Sertakan info pemilik
+        // Ambil info pemilik
+        pemilik: {
           select: {
             nama: true,
             no_hp: true
           }
         },
-        _count: { // Hitung jumlah kamar
-          select: { kamar: true }
+        // Ambil daftar kamar, TAPI hanya ambil kolom 'status'-nya saja agar ringan
+        kamar: {
+          select: { status: true }
         }
       }
     });
-    res.status(200).json(properti);
+
+    // Kita format datanya sebelum dikirim ke Flutter
+    // Kita hitung manual array 'kamar' tadi
+    const formattedData = propertiList.map(prop => {
+      const totalKamar = prop.kamar.length;
+      const kamarTerisi = prop.kamar.filter(k => k.status === 'Ditempati').length;
+
+      return {
+        id: prop.id,
+        nama_properti: prop.nama_properti,
+        alamat: prop.alamat,
+        deskripsi: prop.deskripsi,
+        // Kita kirim dua angka ini ke Frontend
+        total_kamar: totalKamar,
+        kamar_terisi: kamarTerisi
+      };
+    });
+
+    res.status(200).json(formattedData);
   } catch (error) {
     res.status(500).json({ message: "Gagal mengambil data properti", error: error.message });
   }
@@ -74,7 +95,7 @@ export const updateProperti = async (req, res) => {
   try {
     const { id } = req.params;
     const { nama_properti, alamat, deskripsi } = req.body;
-    const adminId = req.user.id;
+    const adminId = req.user.userId;
 
     // 1. Cek keberadaan properti
     const properti = await prisma.properti.findUnique({
@@ -110,7 +131,7 @@ export const updateProperti = async (req, res) => {
 export const deleteProperti = async (req, res) => {
   try {
     const { id } = req.params;
-    const adminId = req.user.id;
+    const adminId = req.user.userId;
 
     // 1. Cek keberadaan properti
     const properti = await prisma.properti.findUnique({
