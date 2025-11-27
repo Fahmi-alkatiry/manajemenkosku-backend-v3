@@ -57,6 +57,8 @@ export const login = async (req, res) => {
 };
 
 
+
+
 export const getAllUsers = async (req, res) => {
   try {
     const users = await prisma.user.findMany();

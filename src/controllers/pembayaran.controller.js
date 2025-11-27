@@ -3,6 +3,7 @@
 import prisma from '../lib/prisma.js';
 
 // 1. Membuat Tagihan Baru (Oleh Admin)
+// 1. Membuat Tagihan Baru (Revisi: Handle Duplikat & Ditolak)
 export const createPembayaran = async (req, res) => {
   try {
     const { kontrakId, bulan, tahun } = req.body;
@@ -11,46 +12,62 @@ export const createPembayaran = async (req, res) => {
       return res.status(400).json({ message: "Kontrak, bulan, dan tahun wajib diisi" });
     }
 
-    // 1. Ambil data kontrak untuk mendapatkan harga DAN tanggal mulai sewa
+    // --- LANGKAH 1: CEK APAKAH SUDAH ADA TAGIHAN? ---
+    const existingBill = await prisma.pembayaran.findFirst({
+      where: {
+        kontrakId: parseInt(kontrakId),
+        bulan: bulan,
+        tahun: parseInt(tahun)
+      }
+    });
+
+    if (existingBill) {
+      // Jika sudah ada dan statusnya Lunas atau Pending -> Tahan (Error)
+      if (existingBill.status !== 'Ditolak') {
+        return res.status(400).json({ message: "Tagihan untuk bulan dan tahun tersebut sudah ada" });
+      }
+      
+      // Jika sudah ada TAPI statusnya 'Ditolak' -> HAPUS DULU (Supaya bisa buat baru)
+      // Ini memberikan efek "Revisi Tagihan"
+      await prisma.pembayaran.delete({
+        where: { id: existingBill.id }
+      });
+    }
+
+    // --- LANGKAH 2: AMBIL INFO KONTRAK ---
     const kontrak = await prisma.kontrak.findUnique({
       where: { id: parseInt(kontrakId) }
     });
+    
     if (!kontrak) {
       return res.status(404).json({ message: "Kontrak tidak ditemukan" });
     }
 
-    // 2. Hitung Tanggal Jatuh Tempo
-    // Ambil tanggal 'mulai' dari kontrak (misal: 5)
+    // --- LANGKAH 3: HITUNG JATUH TEMPO ---
     const tanggalTagihan = kontrak.tanggal_mulai_sewa.getDate();
-    
-    // Konversi nama bulan (String) ke angka (0-11)
     const daftarBulan = [
       'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
       'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
     ];
-    const bulanAngka = daftarBulan.indexOf(bulan); // Misal: 'November' -> 10
-
-    // Buat tanggal jatuh tempo (misal: 5 November 2025)
+    const bulanAngka = daftarBulan.indexOf(bulan);
     const jatuhTempo = new Date(tahun, bulanAngka, tanggalTagihan);
 
-    // 3. Buat tagihan baru
+    // --- LANGKAH 4: BUAT TAGIHAN BARU ---
     const newPembayaran = await prisma.pembayaran.create({
       data: {
         kontrakId: parseInt(kontrakId),
         bulan,
         tahun: parseInt(tahun),
         jumlah: kontrak.harga_sewa_disepakati,
-        status: 'Pending',
-        tanggal_jatuh_tempo: jatuhTempo // <-- SIMPAN TANGGAL JATUH TEMPO
+        status: 'Pending', // Reset jadi Pending
+        tanggal_jatuh_tempo: jatuhTempo
       }
     });
 
     res.status(201).json(newPembayaran);
 
   } catch (error) {
-    if (error.code === 'P2002') {
-      return res.status(400).json({ message: "Tagihan untuk bulan dan tahun tersebut sudah ada" });
-    }
+    console.error(error);
     res.status(500).json({ message: "Gagal membuat tagihan", error: error.message });
   }
 };
